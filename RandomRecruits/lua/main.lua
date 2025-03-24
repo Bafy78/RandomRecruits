@@ -83,9 +83,11 @@ local function random_recruit_array(desired_length)
 end
 
 local function enable()
+	local unit_count = wesnoth.get_variable("random_recruits_unit_count") or 3
+
 	for _, side in ipairs(wesnoth.sides) do
 		if #side.recruit > 0 then
-			side.recruit = random_recruit_array(3)
+			side.recruit = random_recruit_array(unit_count)
 			wesnoth.set_variable("RandomRecruits_enabled_" .. side.side, true)
 			side.gold = side.gold - 5
 		end
@@ -119,10 +121,12 @@ on_event("start", function()
 	end
 end)
 
+
 on_event("prerecruit", function()
 	local side = wesnoth.sides[wesnoth.current.side]
 	if wesnoth.get_variable("RandomRecruits_enabled_" .. side.side) then
-		side.recruit = random_recruit_array(3)
+		local unit_count = wesnoth.get_variable("random_recruits_unit_count") or 3
+		side.recruit = random_recruit_array(unit_count)
 	end
 end)
 
