@@ -82,7 +82,24 @@ local function random_recruit_array(desired_length)
 	return result
 end
 
+local function enable()
+	for _, side in ipairs(wesnoth.sides) do
+		if #side.recruit > 0 then
+			side.recruit = random_recruit_array(3)
+			wesnoth.set_variable("RandomRecruits_enabled_" .. side.side, true)
+			side.gold = side.gold - 5
+		end
+	end
+end
+
 on_event("start", function()
+	local auto_enable = wesnoth.get_variable("random_recruits_auto_enable")
+
+	if auto_enable then
+			enable()
+		return
+	end
+
 	local options = {
 		{
 			text = "Activate, make recruits random!",
@@ -98,13 +115,7 @@ on_event("start", function()
 	local result = randomrecruits.show_dialog { label = label, options = options, can_cancel = false }
 	result = options[result.index]
 	if result.enable then
-		for _, side in ipairs(wesnoth.sides) do
-			if #side.recruit > 0 then
-				side.recruit = random_recruit_array(3)
-				wesnoth.set_variable("RandomRecruits_enabled_" .. side.side, true)
-				side.gold = side.gold - 5
-			end
-		end
+		enable()
 	end
 end)
 
