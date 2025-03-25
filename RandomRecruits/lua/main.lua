@@ -62,17 +62,15 @@ if not pcall(init_era) then
 	init_era()
 end
 
-local era_unit_rand_string = "1.." .. #era_array
-local function random_recruit()
-	return era_array[mathx.random_choice(era_unit_rand_string)]
-end
-
-local function random_recruit_array(desired_length)
+local function get_random_units_from_list(desired_length, unit_list, random_getter)
+	if unit_list and #unit_list <= desired_length then
+		return unit_list
+	end
 	local result = {}
 	local set = {}
 	local attempt = 0
 	while attempt < 100 and #result < desired_length do
-		local unit = random_recruit()
+		local unit = random_getter(unit_list)
 		if set[unit] == nil then
 			set[unit] = true
 			result[#result + 1] = unit
@@ -82,12 +80,49 @@ local function random_recruit_array(desired_length)
 	return result
 end
 
+local era_unit_rand_string = "1.." .. #era_array
+local function random_recruit_array(desired_length)
+	return get_random_units_from_list(desired_length, nil, function() 
+		return era_array[mathx.random_choice(era_unit_rand_string)]
+	end)
+end
+
+local function random_recruit_array_from_list(desired_length, unit_list)
+	return get_random_units_from_list(desired_length, unit_list, function(list)
+		local index = mathx.random(1, #list)
+		return list[index]
+	end)
+end
+
+local function get_original_recruits(side_num)
+	local list_str = wesnoth.get_variable("RandomRecruits_original_list_" .. side_num)
+	if not list_str or list_str == "" then
+		return nil
+	end
+	return split_comma(list_str)
+end
+
+local function get_random_units(side_num, unit_count)
+	local use_normal_list = wesnoth.get_variable("random_recruits_use_normal_list")
+	local original_list = get_original_recruits(side_num)
+	if use_normal_list and original_list then
+		if #original_list <= unit_count then
+			return original_list
+		else
+			return random_recruit_array_from_list(unit_count, original_list)
+		end
+	else
+		return random_recruit_array(unit_count)
+	end
+end
+
 local function enable()
 	local unit_count = wesnoth.get_variable("random_recruits_unit_count") or 3
-
 	for _, side in ipairs(wesnoth.sides) do
 		if #side.recruit > 0 then
-			side.recruit = random_recruit_array(unit_count)
+			local original_list = table.concat(side.recruit, ",")
+			wesnoth.set_variable("RandomRecruits_original_list_" .. side.side, original_list)
+			side.recruit = get_random_units(side.side, unit_count)
 			wesnoth.set_variable("RandomRecruits_enabled_" .. side.side, true)
 			side.gold = side.gold - 5
 		end
@@ -126,7 +161,7 @@ on_event("prerecruit", function()
 	local side = wesnoth.sides[wesnoth.current.side]
 	if wesnoth.get_variable("RandomRecruits_enabled_" .. side.side) then
 		local unit_count = wesnoth.get_variable("random_recruits_unit_count") or 3
-		side.recruit = random_recruit_array(unit_count)
+		side.recruit = get_random_units(side.side, unit_count)
 	end
 end)
 
